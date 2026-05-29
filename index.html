@@ -2512,7 +2512,7 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
   text-transform:uppercase; letter-spacing:.05em; margin-bottom:7px; }
 .atc-btns { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
 
-/* ── OPEN AVAILABILITY SLOTS ── */
+/* ── OPEN MODE: AVAILABILITY INDICATORS (visual only) ── */
 .open-slot {
   position: absolute; left: 4px; right: 4px;
   background: rgba(255, 214, 0, 0.18);
@@ -2520,18 +2520,9 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
   border-radius: 10px; z-index: 1;
   display: flex; flex-direction: column;
   justify-content: flex-start; padding: 7px 8px;
-  transition: background 0.15s, border-color .15s;
-  cursor: pointer;
+  pointer-events: none; /* purely visual — drag-create passes through to .dcolinner */
   overflow: hidden;
 }
-.open-slot:hover { background: rgba(255, 214, 0, 0.30); border-color: rgba(160,120,0,.65); }
-.os-add-hint {
-  display: none; position: absolute; bottom: 5px; right: 8px;
-  font-size: 10px; font-weight: 700; color: rgba(140,100,0,.85);
-  background: rgba(255,235,80,.45); padding: 2px 7px;
-  border-radius: 6px; pointer-events: none;
-}
-.open-slot:hover .os-add-hint { display: block; }
 .os-label {
   font-size: 10px; font-weight: 700;
   color: #9a7200; letter-spacing: 0.02em;
@@ -2540,6 +2531,216 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
   font-size: 9px; font-weight: 500;
   color: #b89000; opacity: 0.8; margin-top: 2px;
 }
+
+.busy-slot {
+  position: absolute; left: 4px; right: 4px;
+  background: rgba(224, 86, 124, 0.18);
+  border: 1.5px solid rgba(224, 86, 124, 0.45);
+  border-radius: 10px; z-index: 2;
+  display: flex; flex-direction: column;
+  justify-content: flex-start; padding: 7px 8px;
+  pointer-events: none; /* purely visual */
+  overflow: hidden;
+}
+.bs-label {
+  font-size: 10px; font-weight: 700;
+  color: #a01e44; letter-spacing: 0.02em;
+}
+.bs-dur {
+  font-size: 9px; font-weight: 500;
+  color: #c0506a; opacity: 0.85; margin-top: 2px;
+}
+
+/* ═══════════════ CHUNK (calendar todo block) ═══════════════ */
+.ev.chunk {
+  background: linear-gradient(135deg, #fff5f8, #ffe8ed) !important;
+  border: 2px dashed #e0567c !important;
+  color: #7a1e38 !important;
+}
+.ev.chunk::before {
+  content: '☑';
+  position: absolute; top: 4px; right: 6px;
+  font-size: 12px; opacity: .5;
+  pointer-events: none;
+}
+.ev.chunk .et { color: #7a1e38; }
+.ev.chunk .es { color: #a8627a; opacity: .8; }
+.ev.chunk.chunk-complete {
+  background: linear-gradient(135deg, #ffe0e8, #ffd0d8) !important;
+  border-style: solid !important;
+}
+.ev.chunk.chunk-complete::before { content: '✓'; opacity: .8; }
+.ev.chunk .chunk-progress {
+  position: absolute; bottom: 4px; left: 6px; right: 6px;
+  height: 4px; background: rgba(255,255,255,.5);
+  border-radius: 2px; overflow: hidden;
+}
+.ev.chunk .chunk-progress-fill {
+  height: 100%; background: #e0567c; transition: width .3s;
+}
+.ev.chunk .chunk-count {
+  position: absolute; bottom: 12px; right: 6px;
+  font-size: 9px; font-weight: 800;
+  padding: 1px 6px; border-radius: 8px;
+  background: rgba(255,255,255,.7);
+  color: #a01e44;
+}
+
+/* Chunk popover */
+.chunk-popover-bg {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(20, 10, 25, .35);
+  backdrop-filter: blur(3px);
+  z-index: 9000;
+}
+.chunk-popover-bg.show { display: block; }
+.chunk-popover {
+  display: none;
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 380px; max-height: 80vh;
+  background: white;
+  border-radius: 18px;
+  border: 2px solid #e0567c;
+  box-shadow: 0 24px 64px rgba(0,0,0,.25);
+  z-index: 9100;
+  flex-direction: column;
+  overflow: hidden;
+  animation: popIn .2s cubic-bezier(.34,1.56,.64,1);
+}
+.chunk-popover.show { display: flex; }
+.chunk-pop-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #ffe0e8, #ffd0d8);
+  border-bottom: 1.5px solid #ffc8d0;
+}
+.chunk-pop-title-inp {
+  flex: 1; font-size: 16px; font-weight: 800;
+  color: #1a1a2e; font-family: inherit;
+  background: transparent; border: none; outline: none;
+  padding: 4px 8px; border-radius: 6px;
+  transition: background .14s;
+}
+.chunk-pop-title-inp:focus { background: rgba(255,255,255,.6); }
+.chunk-pop-title-inp::placeholder { color: #b89098; font-weight: 600; }
+.chunk-pop-close {
+  background: rgba(255,255,255,.5); border: none; cursor: pointer;
+  color: #7a1e38; font-size: 18px; line-height: 1;
+  width: 28px; height: 28px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit; transition: background .14s;
+}
+.chunk-pop-close:hover { background: white; }
+
+.chunk-pop-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px;
+  font-size: 11px; color: #7a4858; font-weight: 600;
+  border-bottom: 1px solid #f0e8ec;
+}
+.chunk-pop-progress { display: flex; align-items: center; gap: 8px; }
+.chunk-pop-bar {
+  width: 80px; height: 5px; background: #f0eaee;
+  border-radius: 3px; overflow: hidden;
+}
+.chunk-pop-fill {
+  display: block; height: 100%; width: 0;
+  background: linear-gradient(90deg, #e0567c, #a01e44);
+  border-radius: 3px; transition: width .3s cubic-bezier(.34,.95,.34,1);
+}
+
+.chunk-pop-input-row {
+  display: flex; gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0e8ec;
+}
+.chunk-pop-input {
+  flex: 1; padding: 9px 12px;
+  font-size: 12px; font-family: inherit; color: #1a1a2e;
+  border: 1.5px solid #e0e0ec; border-radius: 8px;
+  outline: none; transition: border-color .14s;
+}
+.chunk-pop-input::placeholder { color: #c0c0d0; }
+.chunk-pop-input:focus { border-color: #e0567c; }
+.chunk-pop-add {
+  background: #e0567c; color: white;
+  border: none; cursor: pointer;
+  padding: 0 14px; border-radius: 8px;
+  font-size: 12px; font-weight: 700;
+  font-family: inherit;
+  transition: background .12s, transform .1s;
+}
+.chunk-pop-add:hover  { background: #a01e44; }
+.chunk-pop-add:active { transform: scale(.95); }
+
+.chunk-pop-items {
+  flex: 1; overflow-y: auto;
+  padding: 6px 0; min-height: 80px;
+}
+.chunk-pop-items::-webkit-scrollbar { width: 5px; }
+.chunk-pop-items::-webkit-scrollbar-thumb { background: #e0d0d8; border-radius: 2px; }
+
+.chunk-pop-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background .12s;
+  border-bottom: 1px solid rgba(0,0,0,.04);
+}
+.chunk-pop-item:hover { background: #fff5f8; }
+.chunk-pop-cb {
+  width: 18px; height: 18px; border: 2px solid #d0c8d0;
+  border-radius: 5px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: white; transition: all .14s;
+}
+.chunk-pop-cb.checked { background: #e0567c; border-color: #e0567c; }
+.chunk-pop-cb.checked::after {
+  content: '✓'; color: white; font-size: 11px; font-weight: 800;
+}
+.chunk-pop-text { flex: 1; font-size: 13px; color: #1a1a2e; line-height: 1.35; word-break: break-word; }
+.chunk-pop-item.done .chunk-pop-text { text-decoration: line-through; color: #b0a8b0; }
+.chunk-pop-del-item {
+  flex-shrink: 0;
+  background: none; border: none; cursor: pointer;
+  color: #c0c0d0; font-size: 17px; line-height: 1;
+  width: 22px; height: 22px; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; font-family: inherit;
+  transition: opacity .12s, color .12s, background .12s;
+}
+.chunk-pop-item:hover .chunk-pop-del-item { opacity: 1; }
+.chunk-pop-del-item:hover { color: #e0567c; background: #ffe0e8; }
+
+.chunk-pop-empty {
+  padding: 32px 20px; text-align: center;
+  color: #b0b0c8; font-size: 12px;
+}
+
+.chunk-pop-foot {
+  display: flex; justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid #f0e8ec;
+  background: #fafafc;
+}
+.chunk-pop-del {
+  background: none; border: 1.5px solid #f0d0d0;
+  color: #c04040; cursor: pointer;
+  padding: 7px 13px; border-radius: 8px;
+  font-size: 11px; font-weight: 700; font-family: inherit;
+  transition: all .14s;
+}
+.chunk-pop-del:hover { background: #ffe0e0; border-color: #e0a0a0; }
+.chunk-pop-done {
+  background: linear-gradient(135deg, #e0567c, #a01e44);
+  color: white; border: none; cursor: pointer;
+  padding: 8px 18px; border-radius: 8px;
+  font-size: 12px; font-weight: 800; font-family: inherit;
+  transition: filter .14s;
+}
+.chunk-pop-done:hover { filter: brightness(1.08); }
 
 /* ── MODAL ── */
 .modallayer { position: absolute; inset: 0; pointer-events: none; z-index: 50; }
@@ -2556,6 +2757,31 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
 .evmodal::-webkit-scrollbar { width: 6px; }
 .evmodal::-webkit-scrollbar-thumb { background: #e0d0d8; border-radius: 3px; }
 .evmodal::-webkit-scrollbar-track { background: transparent; }
+.gcal-btn {
+  display: inline-flex; align-items: center;
+  padding: 8px 12px; border-radius: 9px;
+  background: white; border: 1.5px solid #e0e0ec;
+  color: #5a5a72; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  transition: border-color .14s, color .14s, background .14s;
+}
+.gcal-btn:hover { border-color: #e0567c; color: #a01e44; background: #fff5f8; }
+.ss-btn-pri {
+  background: linear-gradient(135deg, #e0567c, #a01e44);
+  color: white; border: none;
+  padding: 7px 14px; border-radius: 8px;
+  font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
+  transition: filter .14s;
+}
+.ss-btn-pri:hover { filter: brightness(1.08); }
+.ss-select {
+  padding: 7px 10px; border-radius: 8px;
+  border: 1.5px solid #e0e0ec; background: white;
+  font-size: 12px; font-family: inherit; color: #1a1a2e;
+  cursor: pointer; outline: none;
+  transition: border-color .14s;
+}
+.ss-select:focus { border-color: #e0567c; }
 @keyframes popIn {
   from { opacity:0; transform: scale(.93) translateY(4px); }
   to   { opacity:1; transform: scale(1)   translateY(0); }
@@ -2944,7 +3170,17 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
             <div class="ev-checklist-items" id="mchklItems"></div>
           </div>
           <div class="mdiv"></div>
-          <button class="done-btn" id="mdone">Done</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="done-btn" id="mdone" style="flex:1">Done</button>
+            <button class="gcal-btn" id="mGCal" title="Open in Google Calendar">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:block">
+                <rect x="1.5" y="2.5" width="11" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3" fill="none"/>
+                <line x1="1.5" y1="5.5" x2="12.5" y2="5.5" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M4.8 8.8c.3-.4.8-.7 1.4-.7.9 0 1.5.6 1.5 1.3 0 .8-.6 1.3-1.5 1.3-.5 0-1-.2-1.3-.5M8.3 8.2l1.3-.5v3" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" fill="none"/>
+              </svg>
+              <span style="margin-left:5px">Google</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -3128,6 +3364,13 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
           <button class="page-grad-btn-sec" id="homeNewTemplate">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2" y="1" width="8" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><line x1="4" y1="4" x2="8" y2="4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="4" y1="6.5" x2="8" y2="6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
             New Template
+          </button>
+          <button class="page-grad-btn-sec" id="homeNewChunk" title="Create a time block with a todo list">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <rect x="2" y="2" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4" stroke-dasharray="1.5 1.5"/>
+              <polyline points="4,6.5 5.5,8 8,5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+            New Chunk
           </button>
           <button class="page-grad-btn" id="homeNewEvent">
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="6" y1="1" x2="6" y2="11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -3378,6 +3621,77 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
 </div>
 
 <!-- ── ADD-TO-CALENDAR PLACEMENT PROMPT ── -->
+<!-- ── CHUNK CREATE DIALOG ── -->
+<div class="atc-overlay" id="chunkCreateOverlay" style="display:none">
+  <div class="atc-box">
+    <div class="atc-head">
+      <span class="atc-title">New Chunk</span>
+      <button class="wiz-close" id="chunkCreateClose">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+          <line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+    <p style="font-size:11px;color:#7a7a92;margin:0 0 10px;line-height:1.4">
+      A chunk is a calendar block that opens a focused todo list when clicked. Use for routines, prep blocks, or grouped errands.
+    </p>
+    <div class="atc-field">
+      <label class="atc-label">Title</label>
+      <input type="text" id="chunkCreateTitle" class="wiz-input" placeholder="Morning routine, Errands, Project work…">
+    </div>
+    <div class="atc-field">
+      <label class="atc-label">Date</label>
+      <input type="date" id="chunkCreateDate" class="wiz-input" style="max-width:200px">
+    </div>
+    <div style="display:flex;gap:10px;align-items:flex-end">
+      <div class="atc-field" style="flex:1;margin-bottom:0">
+        <label class="atc-label">Start time</label>
+        <input type="time" id="chunkCreateStart" class="wiz-input" value="09:00">
+      </div>
+      <div class="atc-field" style="flex:1;margin-bottom:0">
+        <label class="atc-label">Duration</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" id="chunkCreateDur" class="wiz-input" min="15" step="15" value="60" style="max-width:80px">
+          <select id="chunkCreateDurUnit" class="wiz-sel">
+            <option value="min">min</option>
+            <option value="hr">hr</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="atc-btns">
+      <button class="wiz-btn-back" id="chunkCreateCancel">Cancel</button>
+      <button class="wiz-btn-next" id="chunkCreateConfirm">Create Chunk</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── CHUNK POPOVER (todo list when clicking a chunk) ── -->
+<div class="chunk-popover-bg" id="chunkPopoverBg"></div>
+<div class="chunk-popover" id="chunkPopover">
+  <div class="chunk-pop-head">
+    <input type="text" id="chunkPopTitle" class="chunk-pop-title-inp" placeholder="Chunk title">
+    <button class="chunk-pop-close" id="chunkPopClose" title="Close">×</button>
+  </div>
+  <div class="chunk-pop-meta">
+    <span id="chunkPopTimeRange">—</span>
+    <span class="chunk-pop-progress">
+      <span class="chunk-pop-bar"><span class="chunk-pop-fill" id="chunkPopFill"></span></span>
+      <span id="chunkPopCount">0 / 0</span>
+    </span>
+  </div>
+  <div class="chunk-pop-input-row">
+    <input type="text" id="chunkPopInput" class="chunk-pop-input" placeholder="Add a todo and press Enter…">
+    <button class="chunk-pop-add" id="chunkPopAdd">Add</button>
+  </div>
+  <div class="chunk-pop-items" id="chunkPopItems"></div>
+  <div class="chunk-pop-foot">
+    <button class="chunk-pop-del" id="chunkPopDel">Delete chunk</button>
+    <button class="chunk-pop-done" id="chunkPopDone">Done</button>
+  </div>
+</div>
+
 <div class="atc-overlay" id="atcOverlay" style="display:none">
   <div class="atc-box">
     <div class="atc-head">
@@ -3505,6 +3819,7 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
     <div class="settings-tabs">
       <button class="settings-tab active" data-tab="appearance">Appearance</button>
       <button class="settings-tab" data-tab="profile">Profile</button>
+      <button class="settings-tab" data-tab="notifications">Alerts</button>
       <button class="settings-tab" data-tab="data">Data</button>
     </div>
     <div class="settings-body" id="settingsBody"></div>
@@ -3602,69 +3917,50 @@ function liveColEvents(colIdx) {
 }
 
 function showOpenMode() {
-  /* Remove any stale open slots first */
-  document.querySelectorAll('.open-slot').forEach(el => el.remove());
+  /* Remove any stale slots first */
+  document.querySelectorAll('.open-slot, .busy-slot').forEach(el => el.remove());
 
-  /* Build availability slots in the gaps between events.
-     Events remain fully visible and interactive — Open mode just
-     overlays yellow indicators where time is unoccupied. */
+  /* Hide all events visually — only the colored availability indicators show.
+     Exception: keep the actively-edited event visible so the modal can position
+     next to it; it'll be hidden on the next refresh after the modal closes. */
+  document.querySelectorAll('.ev').forEach(ev => {
+    if (ev === activeEv) return;
+    if (ev.classList.contains('creating') || ev.classList.contains('ghost')) return;
+    ev.style.display = 'none';
+  });
+
   cols.forEach((col, i) => {
     const inner = col.querySelector('.dcolinner');
     const eventData = liveColEvents(i);
+
+    /* Yellow "Available" slots in the gaps */
     getOpenSlots(eventData).forEach(slot => {
       const dur = slot.e - slot.s;
       const el  = document.createElement('div');
       el.className    = 'open-slot';
       el.style.top    = (slot.s / 60 * HR) + 'px';
       el.style.height = Math.max(dur / 60 * HR - 4, 22) + 'px';
-      el.dataset.startMin = slot.s;
-      el.dataset.endMin   = slot.e;
       el.innerHTML = `<span class="os-label">Available</span>`
-        + (dur >= 30 ? `<span class="os-dur">${fmtTime(slot.s)} – ${fmtTime(slot.e)} · ${fmtDur(dur)}</span>` : '')
-        + `<span class="os-add-hint">+ Add event</span>`;
+        + (dur >= 30 ? `<span class="os-dur">${fmtTime(slot.s)} – ${fmtTime(slot.e)} · ${fmtDur(dur)}</span>` : '');
+      inner.appendChild(el);
+    });
 
-      /* Click on availability bar → create event here, stay in Open mode */
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const startMin = +el.dataset.startMin;
-        const durMins  = Math.min(60, +el.dataset.endMin - startMin);
-        const topPx    = Math.round(startMin / 60 * HR / SNAP) * SNAP;
-        const htPx     = Math.max(SNAP * 2, Math.round(durMins / 60 * HR / SNAP) * SNAP);
-
-        const newEv = document.createElement('div');
-        newEv.className = 'ev cw';
-        newEv.style.cssText = `top:${topPx}px;height:${htPx}px;background:#ffc8d0;color:#1a1a2e;`;
-        newEv.dataset.evBg  = '#ffc8d0';
-        newEv.dataset.evText= '#1a1a2e';
-        newEv.dataset.priority = 'medium';
-        newEv.innerHTML = `<div class="ev-resize-t"></div>
-          <div class="et" style="color:#999;font-style:italic">New Event</div>
-          <div class="es">${fmtTime(topPx/HR*60)} – ${fmtTime((topPx+htPx)/HR*60)}</div>
-          <div class="ev-resize-b"></div>`;
-        inner.appendChild(newEv);
-        newEv.style.display = ''; /* keep visible while modal is open */
-        setEventDateFromColumn(newEv);
-        pushUndo({
-          ev: newEv,
-          prevTop:    getSnappedTop(newEv),
-          prevHeight: Math.max(SNAP, Math.round(newEv.offsetHeight / SNAP) * SNAP),
-          prevInner:  newEv.closest('.dcolinner'),
-          prevTitle:  newEv.querySelector('.et')?.textContent || '',
-          prevTime:   newEv.querySelector('.es')?.textContent || '',
-          isNew:      true,
-        });
-        openModal(newEv);
-      });
-
+    /* Red "Unavailable" slots wherever an event lives */
+    eventData.forEach(ed => {
+      const dur = ed.e - ed.s;
+      const el  = document.createElement('div');
+      el.className    = 'busy-slot';
+      el.style.top    = (ed.s / 60 * HR) + 'px';
+      el.style.height = Math.max(dur / 60 * HR - 4, 22) + 'px';
+      el.innerHTML = `<span class="bs-label">Unavailable</span>`
+        + (dur >= 30 ? `<span class="bs-dur">${fmtTime(ed.s)} – ${fmtTime(ed.e)}</span>` : '');
       inner.appendChild(el);
     });
   });
 }
 
-/* Add "+ Add event" hint CSS inline */
-
 function showFullMode() {
-  document.querySelectorAll('.open-slot').forEach(el => el.remove());
+  document.querySelectorAll('.open-slot, .busy-slot').forEach(el => el.remove());
   document.querySelectorAll('.ev').forEach(ev => ev.style.display = '');
 }
 
@@ -4706,6 +5002,13 @@ function openModal(ev) {
   }
 }
 
+/* "Add to Google Calendar" button — opens Google's event creation URL */
+document.getElementById('mGCal')?.addEventListener('click', () => {
+  if (!activeEv) return;
+  const url = googleCalendarUrl(activeEv);
+  if (url) window.open(url, '_blank', 'noopener');
+});
+
 /* Live title sync: update event block as user types */
 document.getElementById('mtitle').addEventListener('input', e => {
   if (!activeEv) return;
@@ -4991,8 +5294,9 @@ let createDrag = null;
 daysScroll.addEventListener('mousedown', e => {
   if (e.button !== 0) return;
   if (e.target.closest('.ev')) return;
-  if (e.target.closest('.open-slot')) return;
-  if (viewMode === 'open') return; // open mode has its own slot-click flow
+  /* Yellow + red availability indicators are visual-only — they have
+     pointer-events:none, so mousedown reaches .dcolinner and drag-create works
+     the same way in Open mode as in Full mode. */
   const col = e.target.closest('.dcol');
   if (!col) return;
   const inner = col.querySelector('.dcolinner');
@@ -6132,7 +6436,7 @@ const FONTS = [
   { name:'Space Grotesk', css:"'Space Grotesk',sans-serif",          url:'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap' },
   { name:'Nunito',        css:"'Nunito',sans-serif",                 url:'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap' },
 ];
-let userSettings = { theme:'blossom', font:'System', shape:'rounded', name:'', hideWeekends:false, hasPickedFile:false };
+let userSettings = { theme:'blossom', font:'System', shape:'rounded', name:'', hideWeekends:false, hasPickedFile:false, notify:{ enabled:false, leadMin:15 } };
 
 function applyTheme(id) {
   const t = THEMES.find(x=>x.id===id)||THEMES[4];
@@ -6183,6 +6487,7 @@ function renderSettingsTab(tab) {
   const body = document.getElementById('settingsBody');
   if (tab==='appearance') renderAppearanceTab(body);
   else if (tab==='profile') renderProfileTab(body);
+  else if (tab==='notifications') renderNotificationsTab(body);
   else renderDataTab(body);
 }
 
@@ -6289,6 +6594,226 @@ function renderProfileTab(body) {
   });
 }
 
+/* ══════════════════════════════════
+   NOTIFICATIONS — browser alerts before events
+   ══════════════════════════════════ */
+const NOTIFIED_EVENTS = new Set(); // ids we've already notified this session
+
+function renderNotificationsTab(body) {
+  const ns = userSettings.notify || (userSettings.notify = { enabled:false, leadMin:15 });
+  let permStatus = 'default';
+  if (typeof Notification !== 'undefined') permStatus = Notification.permission;
+  const permPill = permStatus === 'granted'
+    ? `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;background:#e0f0d0;color:#3a6018">✓ Granted</span>`
+    : permStatus === 'denied'
+      ? `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;background:#ffe0e0;color:#a01818">✕ Blocked (enable in browser settings)</span>`
+      : `<span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;background:#fff0c8;color:#7a5400">Not requested yet</span>`;
+
+  body.innerHTML = `
+    <div class="ss-section">
+      <div class="ss-section-title">Browser Notifications</div>
+      <p style="font-size:12px;color:#7a7a92;line-height:1.5;margin:0 0 14px">
+        Get a desktop alert before your events. Notifications work while this dashboard is open in any tab.
+      </p>
+      <div class="data-action-row">
+        <div class="data-action-info">
+          <h4>Permission status</h4>
+          <p>${permPill}</p>
+        </div>
+        ${permStatus !== 'granted' && permStatus !== 'denied'
+          ? `<button class="ss-btn ss-btn-pri" id="ssReqPerm">Request permission</button>`
+          : `<button class="ss-btn ss-btn-sec" id="ssTestNotif">Send test</button>`}
+      </div>
+      <div class="data-action-row">
+        <div class="data-action-info">
+          <h4>Enable alerts</h4>
+          <p>Turn event notifications on / off</p>
+        </div>
+        <label class="iostg"><input type="checkbox" id="ssNotifEnable" ${ns.enabled?'checked':''}><span class="iostg-slider"></span></label>
+      </div>
+      <div class="data-action-row">
+        <div class="data-action-info">
+          <h4>Alert me before</h4>
+          <p>How far in advance to receive a notification</p>
+        </div>
+        <select class="ss-select" id="ssNotifLead">
+          <option value="0"    ${ns.leadMin===0   ?'selected':''}>At event start</option>
+          <option value="5"    ${ns.leadMin===5   ?'selected':''}>5 minutes before</option>
+          <option value="15"   ${ns.leadMin===15  ?'selected':''}>15 minutes before</option>
+          <option value="30"   ${ns.leadMin===30  ?'selected':''}>30 minutes before</option>
+          <option value="60"   ${ns.leadMin===60  ?'selected':''}>1 hour before</option>
+          <option value="120"  ${ns.leadMin===120 ?'selected':''}>2 hours before</option>
+          <option value="1440" ${ns.leadMin===1440?'selected':''}>1 day before</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="ss-section">
+      <div class="ss-section-title">Sync With Google &amp; Other Calendars</div>
+      <p style="font-size:12px;color:#7a7a92;line-height:1.5;margin:0 0 14px">
+        Export your events to an .ics file you can import into Google Calendar, Apple Calendar, or Outlook.
+        Each event in the calendar also has an "Add to Google" button in its edit modal.
+      </p>
+      <div class="data-action-row">
+        <div class="data-action-info">
+          <h4>Export to .ics</h4>
+          <p>Download all events as a standard calendar file</p>
+        </div>
+        <button class="ss-btn ss-btn-pri" id="ssExportIcs">Download .ics</button>
+      </div>
+    </div>
+  `;
+
+  /* Permission button */
+  const reqBtn = document.getElementById('ssReqPerm');
+  if (reqBtn) reqBtn.addEventListener('click', async () => {
+    if (typeof Notification === 'undefined') { alert('Your browser does not support notifications.'); return; }
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+      new Notification('🌸 Notifications enabled!', { body: "You'll get alerts before upcoming events.", icon: notifIcon() });
+      userSettings.notify.enabled = true;
+    }
+    renderSettingsTab('notifications');
+  });
+  const testBtn = document.getElementById('ssTestNotif');
+  if (testBtn) testBtn.addEventListener('click', () => {
+    if (Notification.permission !== 'granted') { alert('Permission is not granted.'); return; }
+    new Notification('🔔 Test notification', { body: 'Looks good! You\'ll see alerts here before each event.', icon: notifIcon() });
+  });
+  document.getElementById('ssNotifEnable')?.addEventListener('change', e => {
+    userSettings.notify.enabled = e.target.checked;
+    if (e.target.checked && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().then(() => renderSettingsTab('notifications'));
+    }
+  });
+  document.getElementById('ssNotifLead')?.addEventListener('change', e => {
+    userSettings.notify.leadMin = parseInt(e.target.value, 10) || 0;
+    NOTIFIED_EVENTS.clear(); // reset so events near the new window get notified
+  });
+  document.getElementById('ssExportIcs')?.addEventListener('click', exportAllToIcs);
+}
+
+/* Small inline-SVG icon as a data-URL for notifications */
+function notifIcon() {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="30" fill="#e0567c"/><path d="M22 28h20M22 36h14" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/></svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+/* Check for upcoming events every minute and fire notifications */
+function checkUpcomingForNotifications() {
+  const ns = userSettings.notify;
+  if (!ns || !ns.enabled) return;
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const leadMs = (ns.leadMin || 0) * 60 * 1000;
+  const now = Date.now();
+  document.querySelectorAll('.ev').forEach(ev => {
+    const date = ev.dataset.date;
+    if (!date) return;
+    const title = ev.querySelector('.et')?.textContent?.trim() || 'Event';
+    if (!title || title === '(No Title)') return;
+    /* Compute event start time from .style.top */
+    const startMin = pxToMins(parseFloat(ev.style.top) || 0);
+    const [y, m, d] = date.split('-').map(Number);
+    const evStart = new Date(y, m-1, d, Math.floor(startMin/60), startMin%60, 0).getTime();
+    const fireAt = evStart - leadMs;
+    /* Fire only when we just crossed the fireAt threshold (within last 60s) */
+    if (now >= fireAt && now < fireAt + 60_000) {
+      /* Use a unique id (date + start + title) so we don't repeat */
+      const id = `${date}_${startMin}_${title}`;
+      if (NOTIFIED_EVENTS.has(id)) return;
+      NOTIFIED_EVENTS.add(id);
+      const minsToGo = Math.max(0, Math.round((evStart - now) / 60_000));
+      const sub = minsToGo === 0 ? 'starting now' : minsToGo === 1 ? 'in 1 minute' : `in ${minsToGo} minutes`;
+      const tm = ev.querySelector('.es')?.textContent || '';
+      const notes = ev.dataset.notes ? `\n${ev.dataset.notes}` : '';
+      try {
+        const n = new Notification(`🌸 ${title}`, {
+          body: `${sub}${tm ? ' · ' + tm : ''}${notes}`,
+          icon: notifIcon(),
+          tag: id,
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch (err) { /* ignore */ }
+    }
+  });
+}
+/* Fire every 30s — fine-grained enough to catch the lead-time window */
+setInterval(checkUpcomingForNotifications, 30_000);
+/* Also run once immediately when settings load */
+setTimeout(checkUpcomingForNotifications, 2000);
+
+/* ── ICS export (Google / Apple / Outlook compatible) ── */
+function icsEscape(s) {
+  return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+}
+function icsDate(date, mins) {
+  const [y, m, d] = date.split('-').map(Number);
+  const dt = new Date(y, m-1, d, Math.floor(mins/60), mins%60, 0);
+  const pad = n => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}T${pad(dt.getHours())}${pad(dt.getMinutes())}00`;
+}
+function exportAllToIcs() {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Calendar Dashboard//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+  ];
+  let count = 0;
+  document.querySelectorAll('.ev').forEach(ev => {
+    const date = ev.dataset.date;
+    if (!date) return;
+    const title = ev.querySelector('.et')?.textContent?.trim() || 'Event';
+    if (title === '(No Title)') return;
+    const startMin = pxToMins(parseFloat(ev.style.top) || 0);
+    const endMin   = startMin + pxToMins(parseFloat(ev.style.height) || HR);
+    const notes    = ev.dataset.notes || '';
+    const meeting  = ev.dataset.meeting || '';
+    const desc     = [notes, meeting].filter(Boolean).join('\n');
+    const uid      = `evt-${date}-${startMin}-${Math.random().toString(36).slice(2,8)}@calendar-dashboard`;
+    lines.push(
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${icsDate(date, startMin)}`,
+      `DTSTART:${icsDate(date, startMin)}`,
+      `DTEND:${icsDate(date, endMin)}`,
+      `SUMMARY:${icsEscape(title)}`,
+      desc ? `DESCRIPTION:${icsEscape(desc)}` : null,
+      meeting ? `LOCATION:${icsEscape(meeting)}` : null,
+      'END:VEVENT',
+    );
+    count++;
+  });
+  lines.push('END:VCALENDAR');
+  const ics = lines.filter(Boolean).join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `calendar-events-${new Date().toISOString().slice(0,10)}.ics`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  alert(`Exported ${count} event${count===1?'':'s'} to .ics — import this file into Google Calendar, Apple Calendar, or Outlook.`);
+}
+
+/* ── Build a "Add to Google Calendar" URL for a single event ── */
+function googleCalendarUrl(ev) {
+  const date = ev.dataset.date; if (!date) return null;
+  const title = ev.querySelector('.et')?.textContent?.trim() || 'Event';
+  const startMin = pxToMins(parseFloat(ev.style.top) || 0);
+  const endMin   = startMin + pxToMins(parseFloat(ev.style.height) || HR);
+  const dts = icsDate(date, startMin), dte = icsDate(date, endMin);
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${dts}/${dte}`,
+    details: (ev.dataset.notes || '') + (ev.dataset.meeting ? `\n${ev.dataset.meeting}` : ''),
+    location: ev.dataset.meeting || '',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 function renderDataTab(body) {
   body.innerHTML = `
     <div class="ss-section">
@@ -6327,6 +6852,7 @@ function renderDataTab(body) {
       endsDate: ev.dataset.endsDate  || '',
       endsCount:ev.dataset.endsCount || '',
       checklist:ev.dataset.checklist || '',
+      chunk: ev.dataset.chunk || '',
     }));
     const payload = {
       version: 2,
@@ -6396,6 +6922,10 @@ function renderDataTab(body) {
             if (ed.endsDate) ev.dataset.endsDate = ed.endsDate;
             if (ed.endsCount)ev.dataset.endsCount= ed.endsCount;
             if (ed.checklist)ev.dataset.checklist = ed.checklist;
+            if (ed.chunk === 'true' || ed.chunk === true) {
+              ev.classList.add('chunk');
+              ev.dataset.chunk = 'true';
+            }
             if (ed.bg)   ev.style.background = ed.bg;
             if (ed.text) ev.style.color      = ed.text;
             ev.innerHTML = `<div class="ev-resize-t"></div>
@@ -6413,6 +6943,18 @@ function renderDataTab(body) {
           if (typeof reconcileEvents === 'function') reconcileEvents();
           if (typeof refreshAllConflicts === 'function') refreshAllConflicts(); refreshAllEventSizes();
           if (typeof refreshAllChecklistBadges === 'function') refreshAllChecklistBadges();
+          /* Rebuild chunk visual (progress bar + count) and tile innerHTML for chunks */
+          document.querySelectorAll('.ev.chunk').forEach(ev => {
+            const et = ev.querySelector('.et')?.textContent || 'Chunk';
+            const es = ev.querySelector('.es')?.textContent || '';
+            ev.innerHTML = `<div class="ev-resize-t"></div>
+              <div class="et">${et.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+              <div class="es">${es}</div>
+              <div class="chunk-count" style="display:none">0/0</div>
+              <div class="chunk-progress"><div class="chunk-progress-fill" style="width:0%"></div></div>
+              <div class="ev-resize-b"></div>`;
+          });
+          if (typeof refreshAllChunkDisplays === 'function') refreshAllChunkDisplays();
         }
         syncMissionDropdowns();
         /* Refresh every renderable view so imported data is visible immediately */
@@ -7962,6 +8504,219 @@ if (userSettings.hideWeekends) applyHideWeekends(true);
 if (typeof refreshAllChecklistBadges === 'function') refreshAllChecklistBadges();
 if (typeof refreshAllEventSizes === 'function') refreshAllEventSizes();
 
+/* ══════════════════════════════════════════════
+   CHUNKS — calendar blocks that open a focused todo popover
+   ══════════════════════════════════════════════ */
+let activeChunk = null;
+
+function _escChunk(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* Open chunk-create dialog from the home page */
+document.getElementById('homeNewChunk')?.addEventListener('click', () => {
+  const pst = getPST();
+  const todayIso = `${pst.year}-${String(pst.month+1).padStart(2,'0')}-${String(pst.day).padStart(2,'0')}`;
+  document.getElementById('chunkCreateTitle').value = '';
+  document.getElementById('chunkCreateDate').value  = todayIso;
+  document.getElementById('chunkCreateStart').value = '09:00';
+  document.getElementById('chunkCreateDur').value   = 60;
+  document.getElementById('chunkCreateDurUnit').value = 'min';
+  document.getElementById('chunkCreateOverlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('chunkCreateTitle').focus(), 80);
+});
+document.getElementById('chunkCreateClose')?.addEventListener('click',  () => { document.getElementById('chunkCreateOverlay').style.display = 'none'; });
+document.getElementById('chunkCreateCancel')?.addEventListener('click', () => { document.getElementById('chunkCreateOverlay').style.display = 'none'; });
+document.getElementById('chunkCreateConfirm')?.addEventListener('click', () => {
+  const title    = document.getElementById('chunkCreateTitle').value.trim() || 'Chunk';
+  const dateStr  = document.getElementById('chunkCreateDate').value;
+  const timeStr  = document.getElementById('chunkCreateStart').value || '09:00';
+  const durVal   = parseFloat(document.getElementById('chunkCreateDur').value) || 60;
+  const durUnit  = document.getElementById('chunkCreateDurUnit').value;
+  const durMins  = durUnit === 'hr' ? Math.round(durVal * 60) : Math.round(durVal);
+  if (!dateStr) { alert('Pick a date.'); return; }
+  const [sh, sm] = timeStr.split(':').map(Number);
+  const startMins = sh * 60 + sm;
+  document.getElementById('chunkCreateOverlay').style.display = 'none';
+  const ev = spawnChunk(title, dateStr, startMins, durMins, []);
+  if (ev) {
+    /* Switch to week view and navigate to the chunk's week, then open popover */
+    document.querySelectorAll('.navtab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.navtab:nth-child(2)').classList.add('active');
+    switchView('Calendar');
+    setTimeout(() => openChunkPopover(ev), 150);
+  }
+});
+
+/* Create a chunk on the calendar — same positioning logic as events */
+function spawnChunk(title, isoDate, startMins, durationMins, checklist) {
+  const top    = Math.round(startMins / 60 * HR / SNAP) * SNAP;
+  const height = Math.max(SNAP * 3, Math.round(durationMins / 60 * HR / SNAP) * SNAP);
+  const ev = document.createElement('div');
+  ev.className = 'ev chunk';
+  ev.style.top = top + 'px';
+  ev.style.height = height + 'px';
+  ev.dataset.date  = isoDate;
+  ev.dataset.chunk = 'true';
+  ev.dataset.checklist = JSON.stringify(checklist || []);
+  ev.dataset.priority = 'medium';
+  ev.innerHTML = `<div class="ev-resize-t"></div>
+    <div class="et">${_escChunk(title)}</div>
+    <div class="es">${fmtT(startMins)} – ${fmtT(startMins + durationMins)}</div>
+    <div class="chunk-count" style="display:none">0/0</div>
+    <div class="chunk-progress"><div class="chunk-progress-fill" style="width:0%"></div></div>
+    <div class="ev-resize-b"></div>`;
+  /* Place in off-week storage with proper date; reconcile will move it to the visible column if applicable */
+  const store = (typeof ensureOffWeekStore === 'function') ? ensureOffWeekStore() : document.body;
+  store.appendChild(ev);
+  reconcileEvents();
+  updateChunkDisplay(ev);
+  refreshAllEventSizes();
+  return ev;
+}
+
+/* Refresh the visual progress bar + count + complete state on a chunk tile */
+function updateChunkDisplay(ev) {
+  if (!ev || !ev.classList.contains('chunk')) return;
+  let items = [];
+  try { items = JSON.parse(ev.dataset.checklist || '[]'); } catch {}
+  const total = items.length;
+  const done  = items.filter(i => i.done).length;
+  const pct   = total ? (done / total) * 100 : 0;
+  const fill  = ev.querySelector('.chunk-progress-fill');
+  const count = ev.querySelector('.chunk-count');
+  if (fill)  fill.style.width = pct + '%';
+  if (count) {
+    if (total > 0) { count.style.display = ''; count.textContent = `${done}/${total}`; }
+    else           { count.style.display = 'none'; }
+  }
+  ev.classList.toggle('chunk-complete', total > 0 && done === total);
+}
+
+/* Refresh ALL chunks (called on import / page load) */
+function refreshAllChunkDisplays() {
+  document.querySelectorAll('.ev.chunk').forEach(updateChunkDisplay);
+}
+
+/* ── Chunk popover (the focused todo list) ── */
+const chunkPopover   = document.getElementById('chunkPopover');
+const chunkPopoverBg = document.getElementById('chunkPopoverBg');
+const chunkPopTitle  = document.getElementById('chunkPopTitle');
+const chunkPopInput  = document.getElementById('chunkPopInput');
+const chunkPopItems  = document.getElementById('chunkPopItems');
+const chunkPopFill   = document.getElementById('chunkPopFill');
+const chunkPopCount  = document.getElementById('chunkPopCount');
+const chunkPopTimeRange = document.getElementById('chunkPopTimeRange');
+
+function openChunkPopover(ev) {
+  activeChunk = ev;
+  /* Populate title + time range */
+  chunkPopTitle.value = ev.querySelector('.et')?.textContent || 'Chunk';
+  chunkPopTimeRange.textContent = ev.querySelector('.es')?.textContent || '';
+  chunkPopInput.value = '';
+  renderChunkPopItems();
+  chunkPopover.classList.add('show');
+  chunkPopoverBg.classList.add('show');
+  setTimeout(() => chunkPopInput.focus(), 120);
+}
+function closeChunkPopover() {
+  chunkPopover.classList.remove('show');
+  chunkPopoverBg.classList.remove('show');
+  if (activeChunk) updateChunkDisplay(activeChunk);
+  activeChunk = null;
+}
+
+function renderChunkPopItems() {
+  if (!activeChunk) return;
+  let items = [];
+  try { items = JSON.parse(activeChunk.dataset.checklist || '[]'); } catch {}
+  chunkPopItems.innerHTML = '';
+  if (!items.length) {
+    chunkPopItems.innerHTML = `<div class="chunk-pop-empty">No todos yet — add one above</div>`;
+  } else {
+    items.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'chunk-pop-item' + (item.done ? ' done' : '');
+      row.innerHTML = `
+        <div class="chunk-pop-cb ${item.done ? 'checked' : ''}"></div>
+        <span class="chunk-pop-text"></span>
+        <button class="chunk-pop-del-item" title="Remove">×</button>
+      `;
+      row.querySelector('.chunk-pop-text').textContent = item.text;
+      row.querySelector('.chunk-pop-cb').addEventListener('click', e => {
+        e.stopPropagation();
+        items[idx].done = !items[idx].done;
+        activeChunk.dataset.checklist = JSON.stringify(items);
+        renderChunkPopItems();
+      });
+      row.querySelector('.chunk-pop-del-item').addEventListener('click', e => {
+        e.stopPropagation();
+        items.splice(idx, 1);
+        activeChunk.dataset.checklist = JSON.stringify(items);
+        renderChunkPopItems();
+      });
+      chunkPopItems.appendChild(row);
+    });
+  }
+  /* Progress */
+  const total = items.length, done = items.filter(i => i.done).length;
+  chunkPopFill.style.width = (total ? (done / total) * 100 : 0) + '%';
+  chunkPopCount.textContent = `${done} / ${total}`;
+}
+
+/* Add todo */
+function addChunkTodo() {
+  if (!activeChunk) return;
+  const v = chunkPopInput.value.trim();
+  if (!v) return;
+  let items = [];
+  try { items = JSON.parse(activeChunk.dataset.checklist || '[]'); } catch {}
+  items.push({ text: v, done: false });
+  activeChunk.dataset.checklist = JSON.stringify(items);
+  chunkPopInput.value = '';
+  renderChunkPopItems();
+  chunkPopInput.focus();
+}
+document.getElementById('chunkPopAdd').addEventListener('click', addChunkTodo);
+chunkPopInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addChunkTodo(); }
+  if (e.key === 'Escape') closeChunkPopover();
+});
+
+/* Title edit syncs back to the chunk tile */
+chunkPopTitle.addEventListener('input', () => {
+  if (!activeChunk) return;
+  const et = activeChunk.querySelector('.et');
+  if (et) et.textContent = chunkPopTitle.value || 'Chunk';
+});
+
+/* Close / Done / Delete */
+document.getElementById('chunkPopClose').addEventListener('click', closeChunkPopover);
+document.getElementById('chunkPopDone').addEventListener('click', closeChunkPopover);
+chunkPopoverBg.addEventListener('click', closeChunkPopover);
+document.getElementById('chunkPopDel').addEventListener('click', () => {
+  if (!activeChunk) return;
+  if (!confirm('Delete this chunk and its todo list?')) return;
+  activeChunk.remove();
+  closeChunkPopover();
+});
+
+/* ── Intercept clicks on chunks to open the popover (not the event modal) ── */
+document.addEventListener('click', e => {
+  const chunk = e.target.closest('.ev.chunk');
+  if (!chunk) return;
+  /* Ignore clicks on resize handles (so resizing still works) */
+  if (e.target.classList.contains('ev-resize-t') || e.target.classList.contains('ev-resize-b')) return;
+  e.stopPropagation();
+  e.preventDefault();
+  /* If the standard event modal is open for this chunk, close it first */
+  if (typeof modal !== 'undefined' && modal.style.display === 'block') {
+    modal.style.display = 'none'; activeEv = null;
+  }
+  openChunkPopover(chunk);
+}, true); // capture phase so we beat the event-modal click handler
+
+/* On init, refresh chunk displays */
+if (typeof refreshAllChunkDisplays === 'function') setTimeout(refreshAllChunkDisplays, 100);
+
 /* Show login on every page entry */
 showLogin();
 
@@ -8240,4 +8995,3 @@ renderTasks();
   });
 })();
 </script>
-
