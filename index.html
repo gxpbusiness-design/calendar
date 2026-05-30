@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calendar Dashboard</title>
+<!-- Google Identity Services — used for optional Google Calendar sync (loaded but only invoked on user opt-in) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -6512,7 +6514,7 @@ const FONTS = [
   { name:'Space Grotesk', css:"'Space Grotesk',sans-serif",          url:'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap' },
   { name:'Nunito',        css:"'Nunito',sans-serif",                 url:'https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap' },
 ];
-let userSettings = { theme:'blossom', font:'System', shape:'rounded', name:'', hideWeekends:false, hasPickedFile:false, notify:{ enabled:false, leadMin:15 } };
+let userSettings = { theme:'blossom', font:'System', shape:'rounded', name:'', hideWeekends:false, hasPickedFile:false, notify:{ enabled:false, leadMin:15 }, gcal:{ clientId:'' } };
 
 function applyTheme(id) {
   const t = THEMES.find(x=>x.id===id)||THEMES[4];
@@ -6675,6 +6677,160 @@ function renderProfileTab(body) {
    ══════════════════════════════════ */
 const NOTIFIED_EVENTS = new Set(); // ids we've already notified this session
 
+/* ══════════════════════════════════
+   GOOGLE CALENDAR LIVE SYNC (OAuth + REST)
+   Requires user's own OAuth Client ID from Google Cloud Console.
+   ══════════════════════════════════ */
+const gcalState = { token: null, email: null, tokenClient: null, expiresAt: 0 };
+
+function gcalLog(msg, type) {
+  const log = document.getElementById('ssGcalLog'); if (!log) return;
+  const color = type === 'err' ? '#a01818' : type === 'ok' ? '#1e7048' : '#5a5a72';
+  const ts = new Date().toLocaleTimeString();
+  log.innerHTML = `<div style="color:${color}">[${ts}] ${msg}</div>` + log.innerHTML;
+}
+
+function gcalInitTokenClient() {
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+    gcalLog('Google Identity Services not loaded — check your internet connection.', 'err');
+    return null;
+  }
+  const clientId = (userSettings.gcal && userSettings.gcal.clientId || '').trim();
+  if (!clientId) { gcalLog('Paste your OAuth Client ID first.', 'err'); return null; }
+  if (!clientId.endsWith('.apps.googleusercontent.com')) {
+    gcalLog('Client ID looks wrong — should end in .apps.googleusercontent.com', 'err');
+    return null;
+  }
+  gcalState.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/calendar.events',
+    callback: (resp) => {
+      if (resp.error) { gcalLog('OAuth error: ' + resp.error, 'err'); return; }
+      gcalState.token = resp.access_token;
+      gcalState.expiresAt = Date.now() + (resp.expires_in || 3600) * 1000;
+      gcalLog('✓ Connected to Google Calendar', 'ok');
+      /* Try to read profile email */
+      fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: `Bearer ${gcalState.token}` } })
+        .then(r => r.json()).then(d => { gcalState.email = d.email; renderSettingsTab('notifications'); })
+        .catch(() => renderSettingsTab('notifications'));
+    },
+  });
+  return gcalState.tokenClient;
+}
+
+function gcalConnect() {
+  const tc = gcalInitTokenClient();
+  if (!tc) return;
+  tc.requestAccessToken({ prompt: 'consent' });
+}
+
+function gcalDisconnect() {
+  if (gcalState.token && typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+    try { google.accounts.oauth2.revoke(gcalState.token); } catch {}
+  }
+  gcalState.token = null; gcalState.email = null; gcalState.expiresAt = 0;
+  gcalLog('Disconnected.', '');
+  renderSettingsTab('notifications');
+}
+
+/* Pull events from Google primary calendar (-30d to +90d) */
+async function gcalPullEvents() {
+  if (!gcalState.token) { gcalLog('Not connected.', 'err'); return; }
+  const timeMin = new Date(Date.now() - 30 * 86400000).toISOString();
+  const timeMax = new Date(Date.now() + 90 * 86400000).toISOString();
+  const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`;
+  gcalLog('Pulling events from Google…');
+  try {
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${gcalState.token}` } });
+    if (!r.ok) { gcalLog(`Pull failed: ${r.status} ${r.statusText}`, 'err'); return; }
+    const data = await r.json();
+    const items = data.items || [];
+    let added = 0, skipped = 0;
+    /* Index existing events by their gcal id so we don't duplicate */
+    const existingByGcalId = new Map();
+    document.querySelectorAll('.ev[data-gcal-id]').forEach(ev => existingByGcalId.set(ev.dataset.gcalId, ev));
+    for (const it of items) {
+      if (!it.start || !it.start.dateTime) { skipped++; continue; } // skip all-day for now
+      const start = new Date(it.start.dateTime);
+      const end   = new Date(it.end.dateTime || it.start.dateTime);
+      const iso   = `${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
+      const startMin = start.getHours() * 60 + start.getMinutes();
+      const durMin   = Math.max(15, Math.round((end - start) / 60000));
+      if (existingByGcalId.has(it.id)) { skipped++; continue; }
+      const ev = spawnGcalEvent(it.summary || '(No Title)', iso, startMin, durMin, it.description || '', it.location || '', it.id);
+      added++;
+    }
+    gcalLog(`✓ Pulled ${added} event${added===1?'':'s'} (${skipped} skipped — already synced or all-day).`, 'ok');
+    reconcileEvents(); refreshAllConflicts(); refreshAllEventSizes();
+  } catch (err) { gcalLog('Pull error: ' + err.message, 'err'); }
+}
+
+function spawnGcalEvent(title, isoDate, startMins, durMins, notes, location, gcalId) {
+  const top    = Math.round(startMins / 60 * HR / SNAP) * SNAP;
+  const height = Math.max(SNAP * 2, Math.round(durMins / 60 * HR / SNAP) * SNAP);
+  const ev = document.createElement('div');
+  ev.className = 'ev';
+  ev.style.cssText = `top:${top}px;height:${height}px;background:#a8c8f0;color:#1a3858`;
+  ev.dataset.evBg = '#a8c8f0'; ev.dataset.evText = '#1a3858';
+  ev.dataset.priority = 'medium';
+  ev.dataset.date = isoDate;
+  ev.dataset.gcalId = gcalId;
+  if (notes)    ev.dataset.notes   = notes;
+  if (location) ev.dataset.meeting = location;
+  ev.innerHTML = `<div class="ev-resize-t"></div>
+    <div class="et">${title.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+    <div class="es">${fmtT(startMins)} – ${fmtT(startMins + durMins)}</div>
+    <div class="ev-resize-b"></div>`;
+  const store = (typeof ensureOffWeekStore === 'function') ? ensureOffWeekStore() : document.body;
+  store.appendChild(ev);
+  return ev;
+}
+
+/* Push events from this dashboard up to Google primary calendar */
+async function gcalPushEvents() {
+  if (!gcalState.token) { gcalLog('Not connected.', 'err'); return; }
+  const all = Array.from(document.querySelectorAll('.ev')).filter(ev => {
+    const t = ev.querySelector('.et')?.textContent || '';
+    return ev.dataset.date && t && t !== '(No Title)' && t !== 'New Event';
+  });
+  if (!all.length) { gcalLog('No pushable events.', 'err'); return; }
+  gcalLog(`Pushing ${all.length} event${all.length===1?'':'s'} to Google…`);
+  let created = 0, updated = 0, failed = 0;
+  for (const ev of all) {
+    const title = ev.querySelector('.et')?.textContent || 'Event';
+    const startMin = pxToMins(parseFloat(ev.style.top) || 0);
+    const endMin   = startMin + pxToMins(parseFloat(ev.style.height) || HR);
+    const [y, m, d] = ev.dataset.date.split('-').map(Number);
+    const startDt = new Date(y, m-1, d, Math.floor(startMin/60), startMin%60).toISOString();
+    const endDt   = new Date(y, m-1, d, Math.floor(endMin/60),   endMin%60  ).toISOString();
+    const body = {
+      summary: title,
+      description: ev.dataset.notes || '',
+      location: ev.dataset.meeting || '',
+      start: { dateTime: startDt },
+      end:   { dateTime: endDt   },
+    };
+    const existingId = ev.dataset.gcalId;
+    const url = existingId
+      ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${existingId}`
+      : 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+    const method = existingId ? 'PUT' : 'POST';
+    try {
+      const r = await fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${gcalState.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        if (!existingId) { ev.dataset.gcalId = data.id; created++; }
+        else updated++;
+      } else { failed++; }
+    } catch { failed++; }
+  }
+  gcalLog(`✓ ${created} created, ${updated} updated${failed?`, ${failed} failed`:''}.`, failed ? 'err' : 'ok');
+}
+
 function renderNotificationsTab(body) {
   const ns = userSettings.notify || (userSettings.notify = { enabled:false, leadMin:15 });
   let permStatus = 'default';
@@ -6725,9 +6881,72 @@ function renderNotificationsTab(body) {
     </div>
 
     <div class="ss-section">
-      <div class="ss-section-title">Sync With Google &amp; Other Calendars</div>
+      <div class="ss-section-title">Live Google Calendar Sync <span style="font-size:9px;background:#ffe0e8;color:#a01e44;padding:2px 7px;border-radius:6px;letter-spacing:.06em;margin-left:6px">BETA</span></div>
+      <p style="font-size:12px;color:#7a7a92;line-height:1.5;margin:0 0 12px">
+        Connect your Google account to pull events from your Google Calendar into this dashboard, and push events you create here back to Google.
+        Setup takes about 3 minutes and requires your own free Google Cloud OAuth Client ID — Anthropic / this app never sees your data.
+      </p>
+      <details id="ssGcalHelp" style="margin-bottom:14px;border:1px solid #f0e8ec;border-radius:8px;padding:8px 12px;background:#fafafc">
+        <summary style="cursor:pointer;font-size:12px;font-weight:700;color:#a01e44">How do I get a Client ID? &nbsp;<span style="color:#b0b0c8;font-weight:500">(click to expand)</span></summary>
+        <ol style="margin:10px 0 4px 18px;font-size:11px;color:#5a5a72;line-height:1.7">
+          <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" style="color:#e0567c">console.cloud.google.com</a> and create a new project (free).</li>
+          <li>Open <b>APIs &amp; Services → Library</b>, search for <b>Google Calendar API</b>, click <b>Enable</b>.</li>
+          <li>Open <b>APIs &amp; Services → OAuth consent screen</b>. Choose <b>External</b>, fill in app name + your email, save. Add yourself as a test user under "Test users".</li>
+          <li>Open <b>APIs &amp; Services → Credentials</b>. Click <b>Create credentials → OAuth client ID</b>. Choose <b>Web application</b>.</li>
+          <li>Under <b>Authorized JavaScript origins</b>, add the URL where you host this file
+            (e.g. <code style="background:#f0eaee;padding:1px 5px;border-radius:3px">http://localhost:8000</code>,
+            <code style="background:#f0eaee;padding:1px 5px;border-radius:3px">https://yourname.github.io</code>).
+            <b>OAuth does not work from <code>file://</code></b> — run a local server with
+            <code style="background:#f0eaee;padding:1px 5px;border-radius:3px">python3 -m http.server 8000</code>
+            or host the file.</li>
+          <li>Copy the resulting <b>Client ID</b> (ends in <code style="background:#f0eaee;padding:1px 5px;border-radius:3px">.apps.googleusercontent.com</code>) and paste it below.</li>
+        </ol>
+      </details>
+
+      <div class="data-action-row">
+        <div class="data-action-info">
+          <h4>OAuth Client ID</h4>
+          <p>Paste your Google Cloud OAuth client ID</p>
+        </div>
+      </div>
+      <input type="text" id="ssGcalClientId" class="ss-input"
+        placeholder="123-abc.apps.googleusercontent.com"
+        value="${(userSettings.gcal && userSettings.gcal.clientId) || ''}"
+        style="width:100%;padding:9px 12px;border:1.5px solid #e0e0ec;border-radius:8px;font-size:12px;font-family:inherit;outline:none;margin-bottom:14px">
+
+      <div class="data-action-row" id="ssGcalStatusRow">
+        <div class="data-action-info">
+          <h4>Connection</h4>
+          <p id="ssGcalStatus" style="font-size:11px;color:#7a7a92">${gcalState.token ? `✓ Connected${gcalState.email ? ' as ' + gcalState.email : ''}` : 'Not connected'}</p>
+        </div>
+        ${gcalState.token
+          ? `<button class="ss-btn ss-btn-sec" id="ssGcalDisconnect">Disconnect</button>`
+          : `<button class="ss-btn ss-btn-pri" id="ssGcalConnect">Connect</button>`}
+      </div>
+
+      ${gcalState.token ? `
+      <div class="data-action-row">
+        <div class="data-action-info">
+          <h4>Pull from Google Calendar</h4>
+          <p>Import events from your primary Google calendar (last 30 days &amp; next 90 days)</p>
+        </div>
+        <button class="ss-btn ss-btn-pri" id="ssGcalPull">Pull events</button>
+      </div>
+      <div class="data-action-row">
+        <div class="data-action-info">
+          <h4>Push to Google Calendar</h4>
+          <p>Send every event from this dashboard up to your primary Google calendar. Already-synced events are updated, not duplicated.</p>
+        </div>
+        <button class="ss-btn ss-btn-pri" id="ssGcalPush">Push events</button>
+      </div>
+      ` : ''}
+      <div id="ssGcalLog" style="font-size:11px;color:#5a5a72;line-height:1.6;margin-top:6px;max-height:120px;overflow-y:auto"></div>
+    </div>
+
+    <div class="ss-section">
+      <div class="ss-section-title">Export to a Calendar File</div>
       <p style="font-size:12px;color:#7a7a92;line-height:1.5;margin:0 0 14px">
-        Export your events to an .ics file you can import into Google Calendar, Apple Calendar, or Outlook.
+        Prefer not to connect? Download an .ics file you can import into Google Calendar, Apple Calendar, or Outlook.
         Each event in the calendar also has an "Add to Google" button in its edit modal.
       </p>
       <div class="data-action-row">
@@ -6767,6 +6986,24 @@ function renderNotificationsTab(body) {
     NOTIFIED_EVENTS.clear(); // reset so events near the new window get notified
   });
   document.getElementById('ssExportIcs')?.addEventListener('click', exportAllToIcs);
+
+  /* GCal Client ID input — persists into userSettings */
+  document.getElementById('ssGcalClientId')?.addEventListener('change', e => {
+    userSettings.gcal = userSettings.gcal || {};
+    userSettings.gcal.clientId = e.target.value.trim();
+  });
+  document.getElementById('ssGcalConnect')?.addEventListener('click', () => {
+    /* Pick up any pending change in the input first */
+    const inp = document.getElementById('ssGcalClientId');
+    if (inp) {
+      userSettings.gcal = userSettings.gcal || {};
+      userSettings.gcal.clientId = inp.value.trim();
+    }
+    gcalConnect();
+  });
+  document.getElementById('ssGcalDisconnect')?.addEventListener('click', gcalDisconnect);
+  document.getElementById('ssGcalPull')?.addEventListener('click', gcalPullEvents);
+  document.getElementById('ssGcalPush')?.addEventListener('click', gcalPushEvents);
 }
 
 /* Small inline-SVG icon as a data-URL for notifications */
@@ -6929,6 +7166,7 @@ function renderDataTab(body) {
       endsCount:ev.dataset.endsCount || '',
       checklist:ev.dataset.checklist || '',
       chunk: ev.dataset.chunk || '',
+      gcalId: ev.dataset.gcalId || '',
     }));
     const payload = {
       version: 2,
@@ -6998,6 +7236,7 @@ function renderDataTab(body) {
             if (ed.endsDate) ev.dataset.endsDate = ed.endsDate;
             if (ed.endsCount)ev.dataset.endsCount= ed.endsCount;
             if (ed.checklist)ev.dataset.checklist = ed.checklist;
+            if (ed.gcalId) ev.dataset.gcalId = ed.gcalId;
             if (ed.chunk === 'true' || ed.chunk === true) {
               ev.classList.add('chunk');
               ev.dataset.chunk = 'true';
