@@ -2416,6 +2416,47 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
 .dv-left { flex:1.4; display:flex; flex-direction:column; overflow-y:auto; gap:8px; scrollbar-width:thin; }
 .dv-right { flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto; scrollbar-width:thin; }
 .dv-section-label { font-size:11px; font-weight:700; color:#f08090; text-transform:uppercase; letter-spacing:.06em; padding:4px 0; }
+
+/* Day-view Todo Lists section */
+.dv-chunks-section { margin-top: 24px; padding-top: 16px; border-top: 1.5px dashed #ffd0d8; }
+.dv-chunks-head    { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dv-chunks-add-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 8px;
+  background: linear-gradient(135deg, #ffe0e8, #ffd0d8);
+  color: #a01e44; font-size: 11px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  border: 1.5px solid #e0567c;
+  transition: filter .14s, transform .1s;
+}
+.dv-chunks-add-btn:hover  { filter: brightness(1.04); }
+.dv-chunks-add-btn:active { transform: scale(.96); }
+.dv-chunks-list { display: flex; flex-direction: column; gap: 8px; }
+.dv-chunk-card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, #fff5f8, #ffe8ed);
+  border: 2px dashed #e0567c; border-radius: 12px;
+  cursor: pointer;
+  transition: transform .14s, box-shadow .14s, border-style .14s;
+}
+.dv-chunk-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(224,86,124,.18);
+}
+.dv-chunk-card.complete { border-style: solid; background: linear-gradient(135deg, #ffe0e8, #ffd0d8); }
+.dv-chunk-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dv-chunk-card-title { font-size: 13px; font-weight: 800; color: #1a1a2e; flex: 1; min-width: 0; word-break: break-word; }
+.dv-chunk-card-time  { font-size: 10px; font-weight: 700; color: #a8627a; flex-shrink: 0; }
+.dv-chunk-card-prog  { display: flex; align-items: center; gap: 8px; }
+.dv-chunk-card-bar   { flex: 1; height: 5px; background: rgba(255,255,255,.6); border-radius: 3px; overflow: hidden; }
+.dv-chunk-card-fill  { height: 100%; background: linear-gradient(90deg, #e0567c, #a01e44); border-radius: 3px; transition: width .3s; }
+.dv-chunk-card-count { font-size: 10px; font-weight: 800; color: #7a1e38; flex-shrink: 0; min-width: 32px; text-align: right; }
+.dv-chunk-empty {
+  padding: 18px; text-align: center; font-size: 12px; color: #b0a8b0;
+  background: rgba(255,255,255,.5); border-radius: 10px;
+  border: 1.5px dashed #f0d0d8;
+}
 .dv-events-list { display:flex; flex-direction:column; gap:8px; }
 .dv-ev-item {
   background:#fff; border-radius:14px; padding:12px 14px;
@@ -2552,6 +2593,19 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
 }
 
 /* ═══════════════ CHUNK (calendar todo block) ═══════════════ */
+.topbar-chunk-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; height: 32px;
+  background: linear-gradient(135deg, #ffe0e8, #ffd0d8);
+  border: 1.5px solid #e0567c;
+  border-radius: 10px;
+  color: #a01e44; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer;
+  transition: filter .14s, transform .1s, box-shadow .14s;
+  margin-right: 10px;
+}
+.topbar-chunk-btn:hover  { filter: brightness(1.04); box-shadow: 0 3px 10px rgba(224,86,124,.25); }
+.topbar-chunk-btn:active { transform: scale(.96); }
 .ev.chunk {
   background: linear-gradient(135deg, #fff5f8, #ffe8ed) !important;
   border: 2px dashed #e0567c !important;
@@ -2968,6 +3022,13 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
           </div>
         </div>
         <div class="topright">
+          <button class="topbar-chunk-btn" id="topbarNewChunk" title="Create a chunk with a todo list">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <rect x="2" y="2" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="1.7 1.7" fill="none"/>
+              <polyline points="4,7 5.5,8.5 9,5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            </svg>
+            <span>Chunk</span>
+          </button>
           <div class="vtabs">
             <button class="vtab">Month</button>
             <button class="vtab on">week</button>
@@ -3245,6 +3306,21 @@ body.dark-theme .tmpl-card-meta, body.dark-theme .miss-card-meta, body.dark-them
         <div class="dv-left">
           <div class="dv-section-label" id="dvSectionLabel">All events</div>
           <div class="dv-events-list" id="dvEventsList"></div>
+
+          <!-- Todo Lists (chunks) for this day -->
+          <div class="dv-chunks-section">
+            <div class="dv-chunks-head">
+              <span class="dv-section-label" style="padding:0">Todo Lists</span>
+              <button class="dv-chunks-add-btn" id="dvChunkAdd">
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <line x1="5.5" y1="1.5" x2="5.5" y2="9.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  <line x1="1.5" y1="5.5" x2="9.5" y2="5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                New list
+              </button>
+            </div>
+            <div class="dv-chunks-list" id="dvChunksList"></div>
+          </div>
         </div>
         <div class="dv-right">
           <!-- Accomplished -->
@@ -7386,7 +7462,55 @@ function renderDayView(){
   });
   const sm=dvMoods[dvDate];
   document.querySelectorAll('.dv-face').forEach((f,i)=>f.classList.toggle('selected',i===sm));
+
+  /* Todo Lists (chunks) for this day */
+  renderDayViewChunks();
 }
+
+function renderDayViewChunks() {
+  const wrap = document.getElementById('dvChunksList');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  /* Find all chunks whose data-date matches dvDate */
+  const chunks = Array.from(document.querySelectorAll('.ev.chunk'))
+    .filter(ev => ev.dataset.date === dvDate)
+    .sort((a, b) => (parseFloat(a.style.top)||0) - (parseFloat(b.style.top)||0));
+  if (!chunks.length) {
+    wrap.innerHTML = `<div class="dv-chunk-empty">No todo lists for this day. Tap “New list” above to add one.</div>`;
+    return;
+  }
+  chunks.forEach(ch => {
+    let items = [];
+    try { items = JSON.parse(ch.dataset.checklist || '[]'); } catch {}
+    const total = items.length;
+    const done  = items.filter(i => i.done).length;
+    const pct   = total ? (done/total)*100 : 0;
+    const title = ch.querySelector('.et')?.textContent || 'Chunk';
+    const tm    = ch.querySelector('.es')?.textContent || '';
+    const card  = document.createElement('div');
+    card.className = 'dv-chunk-card' + (total > 0 && done === total ? ' complete' : '');
+    card.innerHTML = `
+      <div class="dv-chunk-card-head">
+        <div class="dv-chunk-card-title"></div>
+        <div class="dv-chunk-card-time">${tm}</div>
+      </div>
+      <div class="dv-chunk-card-prog">
+        <div class="dv-chunk-card-bar"><div class="dv-chunk-card-fill" style="width:${pct}%"></div></div>
+        <div class="dv-chunk-card-count">${done} / ${total}</div>
+      </div>
+    `;
+    card.querySelector('.dv-chunk-card-title').textContent = title;
+    card.addEventListener('click', () => {
+      if (typeof openChunkPopover === 'function') openChunkPopover(ch);
+    });
+    wrap.appendChild(card);
+  });
+}
+
+/* "+ New list" button in day view → open create dialog pre-filled with the day's date */
+document.getElementById('dvChunkAdd')?.addEventListener('click', () => {
+  if (typeof openChunkCreateDialog === 'function') openChunkCreateDialog(dvDate);
+});
 
 document.getElementById('dvAccAdd').addEventListener('click',()=>{
   const inp=document.getElementById('dvAccInp'); const text=inp.value.trim(); if(!text) return;
@@ -8511,17 +8635,27 @@ let activeChunk = null;
 
 function _escChunk(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-/* Open chunk-create dialog from the home page */
-document.getElementById('homeNewChunk')?.addEventListener('click', () => {
+/* Shared opener for the chunk-create dialog. Pre-fills with the given ISO date,
+   or today if none provided. */
+function openChunkCreateDialog(prefilledDate) {
   const pst = getPST();
   const todayIso = `${pst.year}-${String(pst.month+1).padStart(2,'0')}-${String(pst.day).padStart(2,'0')}`;
   document.getElementById('chunkCreateTitle').value = '';
-  document.getElementById('chunkCreateDate').value  = todayIso;
+  document.getElementById('chunkCreateDate').value  = prefilledDate || todayIso;
   document.getElementById('chunkCreateStart').value = '09:00';
   document.getElementById('chunkCreateDur').value   = 60;
   document.getElementById('chunkCreateDurUnit').value = 'min';
   document.getElementById('chunkCreateOverlay').style.display = 'flex';
   setTimeout(() => document.getElementById('chunkCreateTitle').focus(), 80);
+}
+
+/* Open chunk-create dialog from the home page */
+document.getElementById('homeNewChunk')?.addEventListener('click', () => openChunkCreateDialog());
+
+/* Open chunk-create dialog from the calendar topbar — pre-fill with active day-view date if applicable */
+document.getElementById('topbarNewChunk')?.addEventListener('click', () => {
+  const dvActive = document.getElementById('dayView')?.classList.contains('active');
+  openChunkCreateDialog(dvActive ? dvDate : null);
 });
 document.getElementById('chunkCreateClose')?.addEventListener('click',  () => { document.getElementById('chunkCreateOverlay').style.display = 'none'; });
 document.getElementById('chunkCreateCancel')?.addEventListener('click', () => { document.getElementById('chunkCreateOverlay').style.display = 'none'; });
@@ -8622,6 +8756,10 @@ function closeChunkPopover() {
   chunkPopoverBg.classList.remove('show');
   if (activeChunk) updateChunkDisplay(activeChunk);
   activeChunk = null;
+  /* If user is in day view, refresh the chunks card grid so progress updates show */
+  if (document.getElementById('dayView')?.classList.contains('active') && typeof renderDayViewChunks === 'function') {
+    renderDayViewChunks();
+  }
 }
 
 function renderChunkPopItems() {
